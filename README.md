@@ -123,3 +123,24 @@ For production proof image storage:
 
 1. Payment section is intentionally marked Coming Soon.
 2. Chunk-size build warning from Vite is informational and not a build failure.
+
+## Markdown tips
+
+### Text formatting
+
+## Headline
+**bold**
+_ italics _
+[link](http://foo.bar)
+![Alt text](/path/to/img.jpg)
+
+### Code block example
+
+```ruby
+puts "Hello World!"
+```
+
+### LaTeX math tips
+
+\\( ... \\) for in-line math
+$$ ... $$ for displayed equations
