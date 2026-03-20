@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Public client registration: user can create only their own profile and only as client.
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.role == 'client';
+
+      // Clients can update their own profile, but cannot escalate role.
+      allow update: if isOwner(uid)
+        && request.resource.data.role == resource.data.role;
+
+      // Admins can manage roles manually from Firebase Console or privileged backends.
+      allow update, delete: if isAdmin();
+    }
+
+    match /verification_records/{recordId} {
+      allow read: if isAdmin();
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.verificationStatus in ['Verified', 'Rejected']
+        && request.resource.data.payoutEligible is bool
+        && request.resource.data.distanceMeters is number;
+
+      allow update, delete: if false;
+    }
+
+    match /agent_orders/{orderDocId} {
+      allow read: if isAdmin();
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.userEmail == request.auth.token.email
+        && request.resource.data.status == 'Completed'
+        && request.resource.data.orderId is string
+        && request.resource.data.startedAtMs is number
+        && request.resource.data.completedAtMs is number;
+
+      allow update, delete: if false;
+    }
+  }
+}
